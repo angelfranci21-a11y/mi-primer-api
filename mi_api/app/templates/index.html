@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestión de Estudiantes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #faf9f9;
+        }
+        h1 {
+            color: #f70808;
+        }
+        table {
+            border-collapse: collapse;
+            width: 70%;
+            margin-bottom: 30px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background: #727171;
+            color: white;
+        }
+        input, button {
+            padding: 8px;
+            margin: 5px 0;
+        }
+        button {
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lista de Estudiantes</h1>
+    <table id="estudiantes-table">
+        <thead>
+            <tr>
+                <th>Carnet</th>
+                <th>Nombre</th>
+                <th>Grado</th>
+                <th>Edad</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí se insertan los estudiantes -->
+        </tbody>
+    </table>
+
+    <h2>Agregar Estudiante</h2>
+    <form id="form-agregar">
+        <input type="number" id="carnet" placeholder="Carnet" required />
+        <input type="text" id="nombre" placeholder="Nombre" required />
+        <input type="text" id="grado" placeholder="Grado" required />
+        <input type="number" id="edad" placeholder="Edad" required />
+        <button type="submit">Agregar</button>
+    </form>
+
+    <h2>Eliminar Estudiante</h2>
+    <form id="form-eliminar">
+        <input type="number" id="carnet-eliminar" placeholder="Carnet a eliminar" required />
+        <button type="submit">Eliminar</button>
+    </form>
+
+    <p class="error" id="mensaje-error"></p>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:8000/estudiantes";
+
+        const estudiantesTableBody = document.querySelector("#estudiantes-table tbody");
+        const mensajeError = document.getElementById("mensaje-error");
+
+        // Función para cargar estudiantes y mostrarlos en la tabla
+        async function cargarEstudiantes() {
+            mensajeError.textContent = "";
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error("Error al cargar estudiantes");
+                const estudiantes = await response.json();
+
+                estudiantesTableBody.innerHTML = "";
+                estudiantes.forEach(est => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${est.carnet}</td>
+                        <td>${est.nombre}</td>
+                        <td>${est.grado}</td>
+                        <td>${est.edad}</td>
+                    `;
+                    estudiantesTableBody.appendChild(row);
+                });
+            } catch (error) {
+                mensajeError.textContent = error.message;
+            }
+        }
+
+        // Evento para agregar estudiante
+        document.getElementById("form-agregar").addEventListener("submit", async e => {
+            e.preventDefault();
+            mensajeError.textContent = "";
+
+            const carnet = parseInt(document.getElementById("carnet").value);
+            const nombre = document.getElementById("nombre").value.trim();
+            const grado = document.getElementById("grado").value.trim();
+            const edad = parseInt(document.getElementById("edad").value);
+
+            try {
+                const res = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({carnet, nombre, grado, edad})
+                });
+
+                if (res.status === 400) {
+                    const data = await res.json();
+                    throw new Error(data.detail || "Error al agregar estudiante");
+                }
+                if (!res.ok) throw new Error("Error al agregar estudiante");
+
+                // Limpiar formulario
+                e.target.reset();
+                // Recargar lista
+                cargarEstudiantes();
+            } catch (error) {
+                mensajeError.textContent = error.message;
+            }
+        });
+
+        // Evento para eliminar estudiante
+        document.getElementById("form-eliminar").addEventListener("submit", async e => {
+            e.preventDefault();
+            mensajeError.textContent = "";
+
+            const carnetEliminar = parseInt(document.getElementById("carnet-eliminar").value);
+
+            try {
+                const res = await fetch(`${apiUrl}/${carnetEliminar}`, {
+                    method: "DELETE"
+                });
+
+                if (res.status === 404) {
+                    const data = await res.json();
+                    throw new Error(data.detail || "Estudiante no encontrado");
+                }
+                if (!res.ok) throw new Error("Error al eliminar estudiante");
+
+                e.target.reset();
+                cargarEstudiantes();
+            } catch (error) {
+                mensajeError.textContent = error.message;
+            }
+        });
+
+        // Carga inicial
+        cargarEstudiantes();
+    </script>
+</body>
+</html>
